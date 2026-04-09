@@ -1,0 +1,9 @@
+{
+    "DSSE_NLP": {"hostname":"nlpdsse-service","port":5000},
+    "DOPF_NLP": {"hostname":"nlpdopf-service","port":5000},
+    "Recorder": {"hostname":"recorder-service","port":5000},
+    "LocalFeeder": {"hostname":"localfeeder-service","port":5000},
+    "Broker": {"hostname":"broker-service","port":5200},
+    "MeasurementComponent": {"hostname":"sensor-service","port":5000},
+    "StateEstimatorComponent": {"hostname":"wls-service","port":5000}
+}

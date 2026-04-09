@@ -1,0 +1,102 @@
+diff --git a/LocalFeeder/FeederSimulator.py b/LocalFeeder/FeederSimulator.py
+index b35ba97..c00e0e6 100644
+--- a/LocalFeeder/FeederSimulator.py
++++ b/LocalFeeder/FeederSimulator.py
+@@ -10,6 +10,8 @@ import time
+ from enum import Enum
+ from time import strptime
+ from typing import Dict, List, Optional, Set, Tuple
++import platform
++import uuid
+ 
+ import boto3
+ import numpy as np
+@@ -38,6 +40,17 @@ logger = logging.getLogger(__name__)
+ logger.addHandler(logging.StreamHandler())
+ logger.setLevel(logging.INFO)
+ 
++IS_LINUX=False
++CACHE_FOLDER=''
++CACHE_MAP_PATH=''
++if platform.system().lower()=='linux':
++	IS_LINUX=True
++	CACHE_FOLDER=f'/tmp/oedisi_smartds_cache'
++	CACHE_MAP_PATH=os.path.join(CACHE_FOLDER,'map.json')
++	if not os.path.exists(CACHE_FOLDER):
++		os.system(f'mkdir {CACHE_FOLDER}')
++	if not os.path.exists(CACHE_MAP_PATH):
++		json.dump({},open(CACHE_MAP_PATH,'w'))
+ 
+ def permutation(from_list, to_list):
+     """Create permutation representing change in from_list to to_list.
+@@ -144,7 +157,23 @@ class FeederSimulator(object):
+         ):
+             if self._use_smartds:
+                 self._feeder_file = os.path.join("opendss", "Master.dss")
+-                self.download_data("oedi-data-lake", update_loadshape_location=True)
++                if IS_LINUX and os.path.exists(CACHE_FOLDER):
++                    cache_map=json.load(open(CACHE_MAP_PATH))# get latest info
++                    if self._opendss_location in cache_map: # use cache
++                        folder_path=cache_map[self._opendss_location]
++                        if os.path.exists(folder_path):
++                            os.system(f'cp -r {folder_path}/* .')
++                        else: # previous cached download is missing, download again
++                            logger.info(f'cache folder_path {folder_path} is missing, downloading again.')
++                            self.download_data("oedi-data-lake", update_loadshape_location=True, store_cache=folder_path)
++                    else: # download
++                        folder_path=os.path.join(CACHE_FOLDER,uuid.uuid4().hex)
++                        os.system(f'mkdir {folder_path}')
++                        cache_map[self._opendss_location]=folder_path
++                        json.dump(cache_map,open(CACHE_MAP_PATH,'w'))
++                        self.download_data("oedi-data-lake", update_loadshape_location=True, store_cache=folder_path)
++                else: # download, no-cache
++                    self.download_data("oedi-data-lake", update_loadshape_location=True)
+             elif not self._use_smartds and not self._user_uploads_model:
+                 self._feeder_file = os.path.join("opendss", "master.dss")
+                 self.download_data("gadal")
+@@ -216,8 +245,11 @@ class FeederSimulator(object):
+         dss.Text.Command("Batchedit Capacitor..* enabled=yes")
+         dss.Text.Command("Batchedit Storage..* enabled=no")
+ 
+-    def download_data(self, bucket_name, update_loadshape_location=False):
++    def download_data(self, bucket_name, update_loadshape_location=False, store_cache=None):
+         """Download data from bucket path."""
++        if store_cache:
++            current_dir=os.getcwd()
++            os.chdir(store_cache)
+         logging.info(f"Downloading from bucket {bucket_name}")
+         # Equivalent to --no-sign-request
+         s3_resource = boto3.resource("s3", config=Config(signature_version=UNSIGNED))
+@@ -268,6 +300,10 @@ class FeederSimulator(object):
+                 os.makedirs(os.path.dirname(output_location))
+             bucket.download_file(sensor_location, output_location)
+ 
++        if store_cache:
++            os.system(f'cp -r ./* {current_dir}')
++            os.chdir(current_dir)
++
+     def create_measurement_lists(
+         self,
+         percent_voltage=75,
+diff --git a/LocalFeeder/sender_cosim.py b/LocalFeeder/sender_cosim.py
+index 8d52c25..3f36ba9 100644
+--- a/LocalFeeder/sender_cosim.py
++++ b/LocalFeeder/sender_cosim.py
+@@ -5,6 +5,7 @@ import logging
+ from dataclasses import dataclass
+ from datetime import datetime, timedelta
+ from typing import Any, Dict, List
++import argparse
+ 
+ import helics as h
+ import numpy as np
+@@ -497,4 +498,8 @@ def run_simulator(broker_config: BrokerConfig):
+ 
+ 
+ if __name__ == "__main__":
+-    run_simulator(BrokerConfig(broker_ip="127.0.0.1"))
++    parser=argparse.ArgumentParser()
++    parser.add_argument('-i','--ip',help='broker ip',default='127.0.0.1',required=False)
++    parser.add_argument('-p','--port',help='port',default=23404,required=False)
++    args=parser.parse_args()
++    run_simulator(BrokerConfig(broker_ip=args.ip,broker_port=args.port))

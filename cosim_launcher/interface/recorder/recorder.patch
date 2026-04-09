@@ -1,0 +1,22 @@
+diff --git a/recorder/record_subscription.py b/recorder/record_subscription.py
+index abd5e38..ae09bfc 100644
+--- a/recorder/record_subscription.py
++++ b/recorder/record_subscription.py
+@@ -3,6 +3,7 @@ import json
+ import logging
+ from datetime import datetime
+ import time
++import argparse
+ 
+ import helics as h
+ import numpy as np
+@@ -128,4 +129,8 @@ def run_simulator(broker_config: BrokerConfig):
+ 
+ 
+ if __name__ == "__main__":
+-    run_simulator(BrokerConfig(broker_ip="127.0.0.1"))
++    parser=argparse.ArgumentParser()
++    parser.add_argument('-i','--ip',help='broker ip',default='127.0.0.1',required=False)
++    parser.add_argument('-p','--port',help='port',default=23404,required=False)
++    args=parser.parse_args()
++    run_simulator(BrokerConfig(broker_ip=args.ip,broker_port=args.port))

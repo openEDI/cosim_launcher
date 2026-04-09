@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wls-deployment
+spec:
+  selector:
+    matchLabels:
+      app: wls
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: wls
+    spec:
+      containers:
+      - name: wls
+        image: wls:latest
+        ports:
+        - containerPort: 5000
+        imagePullPolicy: Never
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: wls-service
+spec:
+  selector:
+    app: wls
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+  type: ClusterIP

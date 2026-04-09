@@ -1,0 +1,22 @@
+diff --git a/wls_federate/state_estimator_federate.py b/wls_federate/state_estimator_federate.py
+index 850342e..d753a7b 100644
+--- a/wls_federate/state_estimator_federate.py
++++ b/wls_federate/state_estimator_federate.py
+@@ -12,6 +12,7 @@ import json
+ import logging
+ from datetime import datetime
+ from typing import List, Optional, Union
++import argparse
+ 
+ import helics as h
+ import numpy as np
+@@ -385,4 +386,8 @@ def run_simulator(broker_config: BrokerConfig):
+ 
+ 
+ if __name__ == "__main__":
+-    run_simulator(BrokerConfig(broker_ip="127.0.0.1"))
++    parser=argparse.ArgumentParser()
++    parser.add_argument('-i','--ip',help='broker ip',default='127.0.0.1',required=False)
++    parser.add_argument('-p','--port',help='port',default=23404,required=False)
++    args=parser.parse_args()
++    run_simulator(BrokerConfig(broker_ip=args.ip,broker_port=args.port))

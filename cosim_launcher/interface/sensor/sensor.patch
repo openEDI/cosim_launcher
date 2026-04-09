@@ -1,0 +1,102 @@
+diff --git a/measuring_federate/measuring_federate.py b/measuring_federate/measuring_federate.py
+index 1fcc739..ef09c22 100644
+--- a/measuring_federate/measuring_federate.py
++++ b/measuring_federate/measuring_federate.py
+@@ -1,9 +1,12 @@
+ import logging
++import random
++import math
+ import helics as h
+ import numpy as np
+ from pydantic import BaseModel
+ import json
+ from datetime import datetime
++import argparse
+ 
+ from oedisi.types.data_types import MeasurementArray, EquipmentNodeArray
+ from oedisi.types.common import BrokerConfig
+@@ -71,6 +74,7 @@ class MeasurementRelay:
+         self, config: MeasurementConfig, input_mapping, broker_config: BrokerConfig
+     ):
+         self.rng = np.random.default_rng(12345)
++        self._input_mapping=input_mapping
+         # deltat = 60.
+ 
+         # Create Federate Info object that describes the federate properties #
+@@ -128,6 +132,28 @@ class MeasurementRelay:
+ 
+             with open(self.measurement_file, "r") as fp:
+                 self.measurement = json.load(fp)
++
++            # measurement_file dependency creates issues for distributed application. If the sensor location
++            # is provided by user (used through cosim launcher) then use it. If it is not provided/empty, then
++            # use the same logic to randomly generate measurement list based on create_measurement_lists(),
++            # which is the same logic used by FeederSimulator.py. Since, the random number is set to the same
++            # value this should result in same output, provided, the method (create_measurement_lists) used
++            # here and in FeederSimulator.py remains the same along with the same default input args. Needs
++            # further testing. It would be better to import create_measurement_lists() from FeederSimulator
++            # and use it here. Despite the workaround, this allows for better distributed application logic.
++            if not self.measurement:
++                self._AllNodeNames=measurement.ids
++                res=self.create_measurement_lists()
++                # TODO: Force additional information in static_inputs to identify
++                # type instead of the workaround
++                subId=self._input_mapping['subscription'].split('/')[-1]
++                if 'volt' in subId.lower():
++                    self.measurement=res['voltage_subset']
++                elif 'real' in subId.lower():
++                    self.measurement=res['real_subset']
++                if 'imag' in subId.lower():
++                    self.measurement=res['reactive_subset']
++
+             measurement_transformed = self.transform(measurement, self.measurement)
+             logger.debug("measured transformed")
+             logger.debug(measurement_transformed)
+@@ -139,6 +165,37 @@ class MeasurementRelay:
+ 
+         self.destroy()
+ 
++    def create_measurement_lists(
++        self,
++        percent_voltage=75,
++        percent_real=75,
++        voltage_seed=1,
++        real_seed=2,
++        reactive_seed=3,
++    ):
++        """Initialize list of sensor locations for the measurement federate."""
++        random.seed(voltage_seed)
++        voltage_subset = random.sample(
++            self._AllNodeNames,
++            math.floor(len(self._AllNodeNames) * float(percent_voltage) / 100),
++        )
++
++        random.seed(real_seed)
++        real_subset = random.sample(
++            self._AllNodeNames,
++            math.floor(len(self._AllNodeNames) * float(percent_real) / 100),
++        )
++
++        random.seed(reactive_seed)
++        reactive_subset = random.sample(
++            self._AllNodeNames,
++            math.floor(len(self._AllNodeNames) * float(percent_voltage) / 100),
++        )
++
++        return {'voltage_subset':voltage_subset,'real_subset':real_subset,\
++        'reactive_subset':reactive_subset}
++
++
+     def destroy(self):
+         h.helicsFederateDisconnect(self.vfed)
+         logger.info("Federate disconnected")
+@@ -158,4 +215,8 @@ def run_simulator(broker_config: BrokerConfig):
+ 
+ 
+ if __name__ == "__main__":
+-    run_simulator(BrokerConfig(broker_ip="127.0.0.1"))
++    parser=argparse.ArgumentParser()
++    parser.add_argument('-i','--ip',help='broker ip',default='127.0.0.1',required=False)
++    parser.add_argument('-p','--port',help='port',default=23404,required=False)
++    args=parser.parse_args()
++    run_simulator(BrokerConfig(broker_ip=args.ip,broker_port=args.port))

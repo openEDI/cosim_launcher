@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nlpdsse-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nlpdsse
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nlpdsse
+    spec:
+      containers:
+      - name: nlpdsse
+        image: nlpdsse:latest
+        ports:
+        - containerPort: 5000
+        imagePullPolicy: Never # using local images for testing
+        volumeMounts:
+          - name: logs-results-storage
+            mountPath: /persistent_data # generated data+logs to be stored here. Eventually this will be network storage.
+      volumes:
+        - name: logs-results-storage
+          persistentVolumeClaim:
+            claimName: logs-results-pvc
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nlpdsse-service
+spec:
+  selector:
+    app: nlpdsse
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+  type: ClusterIP
