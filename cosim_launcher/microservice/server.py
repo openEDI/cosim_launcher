@@ -148,7 +148,12 @@ def status():
 
 	data={}
 	for entry in serviceMap[runUUID]:
-		serviceHost=serviceMap[runUUID][entry]['hostname']
+		if 'host_ip' in uuidMap[runUUID][entry]:
+			serviceHost=uuidMap[runUUID][entry]['host_ip']
+		else:
+			serviceHost=serviceMap[runUUID][entry]['hostname']
+		logger.debug(f'entry::{entry}::serviceHost::{serviceHost}')
+
 		servicePort=serviceMap[runUUID][entry]['port']
 		url=f'http://{serviceHost}:{servicePort}'
 		reply=requests.get(url=url+'/status',params={'uuid':uuidMap[runUUID][entry]['uuid']})
@@ -168,7 +173,12 @@ async def logs():
 	urls,params=[],[]
 	entries=list(serviceMap[runUUID].keys())
 	for entry in entries:
-		serviceHost=serviceMap[runUUID][entry]['hostname']
+		if 'host_ip' in uuidMap[runUUID][entry]:
+			serviceHost=uuidMap[runUUID][entry]['host_ip']
+		else:
+			serviceHost=serviceMap[runUUID][entry]['hostname']
+		logger.debug(f'entry::{entry}::serviceHost::{serviceHost}')
+
 		servicePort=serviceMap[runUUID][entry]['port']
 		urls.append(f'http://{serviceHost}:{servicePort}/logs')
 		params.append({'uuid':uuidMap[runUUID][entry]['uuid']})
@@ -194,7 +204,12 @@ async def results():
 	recorderFeds=[]
 	for entry in entries:
 		if 'recorder_' in entry:
-			serviceHost=serviceMap[runUUID][entry]['hostname']
+			if 'host_ip' in uuidMap[runUUID][entry]:
+				serviceHost=uuidMap[runUUID][entry]['host_ip']
+			else:
+				serviceHost=serviceMap[runUUID][entry]['hostname']
+			logger.debug(f'entry::{entry}::serviceHost::{serviceHost}')
+
 			servicePort=serviceMap[runUUID][entry]['port']
 			urls.append(f'http://{serviceHost}:{servicePort}/results')
 			params.append({'uuid':uuidMap[runUUID][entry]['uuid']})

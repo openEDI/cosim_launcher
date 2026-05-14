@@ -31,6 +31,12 @@ def run():
 	flag=os.system(directive)
 	assert flag==0
 
+	# resolve
+	fpath=f'/tmp/ip_{runUUID}.txt'
+	os.system("ifconfig eth0 | grep 'inet ' | awk '{print $2}' > "+f"{fpath}")
+	f=open(fpath); hostIp=f.read().splitlines()[0]; f.close()
+	os.system(f'rm {fpath}')
+
 	# update measurement_file
 	json.dump(staticInputs['sensor_list'],\
 		open(os.path.join(dirPath,staticInputs['measurement_file']),'w'))
@@ -48,7 +54,7 @@ def run():
 
 	res=Response(status=HTTPStatus.OK)
 	res.mimetype='application/json'
-	res.response=json.dumps({"success":True,"uuid":runUUID})
+	res.response=json.dumps({"success":True,"uuid":runUUID,'host_ip':hostIp})
 	return res
 
 
