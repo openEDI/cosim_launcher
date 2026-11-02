@@ -1,5 +1,6 @@
 import json
 import os
+import signal
 import shlex
 import subprocess
 import uuid
@@ -45,7 +46,8 @@ def run():
 	directive=f'python3 {runPath} -i {brokerAddress} -p {brokerPort}'
 	outfile=open(os.path.join(dirPath,'out.txt'),'w')
 	errfile=open(os.path.join(dirPath,'error.txt'),'w')
-	proc=subprocess.Popen(shlex.split(directive),stdout=outfile,stderr=errfile,cwd=dirPath)
+	proc=subprocess.Popen(shlex.split(directive),stdout=outfile,stderr=errfile,cwd=dirPath,\
+		preexec_fn=os.setpgrp)
 	procMap[runUUID]=proc.pid
 
 	res=Response(status=HTTPStatus.OK)
@@ -116,6 +118,22 @@ def results():
 		res.response=json.dumps({"success":False,"error":f"UUID {runUUID} does not exist"})
 	return res
 
+
+#=======================================================================================================================
+def sigterm():
+	runUUID = request.args.get('uuid')
+	if runUUID in procMap:
+		os.killpg(os.getpgid(procMap[runUUID]), signal.SIGTERM)
+		res=Response(status=HTTPStatus.OK)
+		res.mimetype='application/json'
+		res.response=json.dumps({"success":True,"data":{}})
+	else:
+		res=Response(status=HTTPStatus.BAD_REQUEST)
+		res.mimetype='application/json'
+		res.response=json.dumps({"success":False,"error":f"UUID {runUUID} does not exist"})
+	return res
+
+
 #=======================================================================================================================
 if __name__ == '__main__':
 	parser=argparse.ArgumentParser()
@@ -129,5 +147,6 @@ if __name__ == '__main__':
 	app.add_url_rule(rule='/status',methods=['GET'],view_func=status)
 	app.add_url_rule(rule='/results',methods=['GET'],view_func=results)
 	app.add_url_rule(rule='/logs',methods=['GET'],view_func=logs)
+	app.add_url_rule(rule='/sigterm',methods=['GET'],view_func=sigterm)
 	app.run(host='0.0.0.0',port=5000,debug=False,use_reloader=False,threaded=True)
 

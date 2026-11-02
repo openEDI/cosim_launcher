@@ -1,0 +1,41 @@
+{
+    "name": "test_tsapp",
+    "components": [
+        {
+            "name": "tsapp",
+            "type": "TSAPP",
+            "parameters": {"casename":"case118"
+            }
+        },
+        {
+            "name": "recorder_voltage_mag",
+            "type": "Recorder",
+            "parameters": {
+                "feather_filename": "voltage_mag.feather",
+                "csv_filename": "voltage_mag.csv"
+            }
+        },
+        {
+            "name": "recorder_voltage_angle",
+            "type": "Recorder",
+            "parameters": {
+                "feather_filename": "voltage_angle.feather",
+                "csv_filename": "voltage_angle.csv"
+            }
+        }
+    ],
+    "links": [
+        {
+            "source": "tsapp",
+            "source_port": "voltages_magnitude",
+            "target": "recorder_voltage_mag",
+            "target_port": "subscription"
+        },
+        {
+            "source": "tsapp",
+            "source_port": "voltages_angle",
+            "target": "recorder_voltage_angle",
+            "target_port": "subscription"
+        }
+    ]
+}

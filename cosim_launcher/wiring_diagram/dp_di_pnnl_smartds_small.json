@@ -1,0 +1,14 @@
+{
+    "max_wall_time":60,
+    "name": "test_dp_di_dnnl",
+    "components": [
+        {
+            "name": "dp_di_pnnl",
+            "type": "DP_DI_PNNL",
+            "parameters": {
+            }
+        }
+    ],
+    "links": [
+    ]
+}

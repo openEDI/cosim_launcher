@@ -1,5 +1,6 @@
 import json
 import os
+import signal
 import random
 import socket
 import shlex
@@ -55,7 +56,8 @@ def run():
 		logger.info(f'brokerDirective::::{brokerDirective}')
 		outfile=open(os.path.join(dirPath,'out.txt'),'w')
 		errfile=open(os.path.join(dirPath,'error.txt'),'w')
-		proc=subprocess.Popen(shlex.split(brokerDirective),stdout=outfile,stderr=errfile)
+		proc=subprocess.Popen(shlex.split(brokerDirective),stdout=outfile,stderr=errfile,\
+			preexec_fn=os.setpgrp)
 		procMap[runUUID]=proc.pid
 
 		res=Response(status=HTTPStatus.OK)
@@ -139,10 +141,26 @@ def assign_broker_port(portMin=10000,portMax=40000):
 
 
 #=======================================================================================================================
+def sigterm():
+	runUUID = request.args.get('uuid')
+	if runUUID in procMap:
+		os.killpg(os.getpgid(procMap[runUUID]), signal.SIGTERM)
+		res=Response(status=HTTPStatus.OK)
+		res.mimetype='application/json'
+		res.response=json.dumps({"success":True,"data":{}})
+	else:
+		res=Response(status=HTTPStatus.BAD_REQUEST)
+		res.mimetype='application/json'
+		res.response=json.dumps({"success":False,"error":f"UUID {runUUID} does not exist"})
+	return res
+
+
+#=======================================================================================================================
 if __name__ == '__main__':
 	app = Flask(__name__)
 	app.add_url_rule(rule='/run',methods=['POST'],view_func=run)
 	app.add_url_rule(rule='/status',methods=['GET'],view_func=status)
 	app.add_url_rule(rule='/logs',methods=['GET'],view_func=logs)
+	app.add_url_rule(rule='/sigterm',methods=['GET'],view_func=sigterm)
 	app.run(host='0.0.0.0',port=5200,debug=False,use_reloader=False,threaded=True)
 

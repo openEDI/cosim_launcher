@@ -30,6 +30,12 @@ baseDir=os.path.dirname(os.path.abspath(__file__))
 services=json.load(open(os.path.join(baseDir,'services.json')))
 componentData=json.load(open(os.path.join(baseDir,'components.json')))
 
+possiblePubPortId={}
+possibleSubPortId={}
+for entry in componentData:
+	possiblePubPortId[entry]=[item['port_id'] for item in componentData[entry]['dynamic_outputs']]
+	possibleSubPortId[entry]=[item['port_id'] for item in componentData[entry]['dynamic_inputs']]
+
 uuidMap={}
 serviceMap={}
 
@@ -37,19 +43,15 @@ serviceMap={}
 #=======================================================================================================================
 def run():
 	data=request.json
+	maxWallTime=data.pop('max_wall_time') if 'max_wall_time' in data else 300
 	data=WiringDiagram(**data).model_dump()
-
-	# TODO: Disabling wiring_diagram_checker as the current approach uses generate_runner_config(),
-	# which uses oedisi.componentframework.system_configuration.initialize_federates(). However,
-	# only a portion of this logic is needed. The approach as is also copies files and this results in
-	# response time going from < 1 second to 3-4 seconds.
-#	isValid=wiring_diagram_checker(data,componentData)
-#	if not isValid:
-#		logger.info(f'wiring diagram check failed')
-#		res=Response(status=HTTPStatus(422))
-#		res.mimetype='application/json'
-#		res.response=json.dumps({'success':False,'info':'invalid wiring diagram'})
-#		return res
+	isValid=wiring_diagram_checker(data)
+	if not isValid['success']:
+		logger.info(f'wiring diagram check failed')
+		res=Response(status=HTTPStatus(422))
+		res.mimetype='application/json'
+		res.response=json.dumps(isValid)
+		return res
 
 	# process data
 	n2t=_algname2type(data['components'])
@@ -108,6 +110,12 @@ def run():
 		res=Response(status=HTTPStatus.OK)
 		res.mimetype='application/json'
 		res.response=json.dumps({"success":True,"uuid":runUUID,"info":uuidMap[runUUID]})
+
+		# process watch
+		proc=subprocess.Popen(shlex.split(\
+			f'python3 proc_watch.py --url http://127.0.0.1:5100 -u {runUUID} -w {maxWallTime}'),\
+			stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,\
+			cwd=os.path.dirname(os.path.abspath(__file__)),preexec_fn=os.setpgrp)
 	else:
 		res=Response(status=HTTPStatus(500))
 		res.mimetype='application/json'
@@ -224,19 +232,55 @@ async def results():
 	return res
 
 #=======================================================================================================================
-def wiring_diagram_checker(wiringDiagram,componentData):
-	try:
-		component_types = {}
-		for entry in componentData:
-			item=ComponentDescription.model_validate(componentData[entry])
-			item.directory='./'
-			component_types[entry]=basic_component(item,True)
+async def sigterm():
+	runUUID = request.args.get('uuid')
 
-		runner_config = generate_runner_config(WiringDiagramChecker.model_validate(wiringDiagram),\
-			component_types, target_directory='/tmp')
-		return True
-	except:
-		return False
+	res=Response(status=HTTPStatus.OK)
+	res.mimetype='application/json'
+
+	data={}
+	urls,params=[],[]
+	entries=list(serviceMap[runUUID].keys())
+	feds=[]
+	for entry in entries:
+		if 'host_ip' in uuidMap[runUUID][entry]:
+			serviceHost=uuidMap[runUUID][entry]['host_ip']
+		else:
+			serviceHost=serviceMap[runUUID][entry]['hostname']
+		logger.debug(f'entry::{entry}::serviceHost::{serviceHost}')
+
+		servicePort=serviceMap[runUUID][entry]['port']
+		urls.append(f'http://{serviceHost}:{servicePort}/sigterm')
+		params.append({'uuid':uuidMap[runUUID][entry]['uuid']})
+		feds.append(entry)
+
+	async with httpx.AsyncClient() as client:
+		replies=await asyncio.gather(*[client.get(url=url,params=param) for url,param in zip(urls,params)])
+		for entry,reply in zip(feds,replies):
+			data[entry]=reply.json() if reply.status_code==200 else reply.text
+
+	res.response=json.dumps({"success":True,"info":data})
+	return res
+
+#=======================================================================================================================
+def wiring_diagram_checker(wiringDiagram):
+	conf=wiringDiagram
+	nodes=[e['type'] for e in conf['components']]
+	missingNodes=set(nodes).difference(possiblePubPortId.keys())
+	if missingNodes:
+		return {'success':False,'info':f"unknown component {missingNodes}"}
+
+	name2type={e['name']:e['type'] for e in conf['components']}
+	for entry in conf['links']:
+		if not entry['source_port'] in possiblePubPortId[name2type[entry['source']]]:
+			return {'success':False,'debug':[nodes,possibleSubPortId],\
+				'info':f"{entry['source_port']} not in {possiblePubPortId[name2type[entry['source']]]}"}
+		if not entry['target_port'] in possibleSubPortId[name2type[entry['target']]]:
+			return {'success':False,'debug':[nodes,possibleSubPortId],\
+				'info':f"{entry['target_port']} not in {possibleSubPortId[name2type[entry['target']]]}"}
+
+	return {'success':True}
+
 
 #=======================================================================================================================
 if __name__ == '__main__':
@@ -245,6 +289,7 @@ if __name__ == '__main__':
 	app.add_url_rule(rule='/status',methods=['GET'],view_func=status)
 	app.add_url_rule(rule='/logs',methods=['GET'],view_func=logs)
 	app.add_url_rule(rule='/results',methods=['GET'],view_func=results)
+	app.add_url_rule(rule='/sigterm',methods=['GET'],view_func=sigterm)
 	app.run(host='0.0.0.0',port=5100,debug=False,use_reloader=False,threaded=True)
 
 

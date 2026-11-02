@@ -1,0 +1,50 @@
+{
+    "max_wall_time":150,
+    "name": "test_ev",
+    "components": [
+        {
+            "name": "ev",
+            "type": "EV",
+            "parameters": {
+                "interface_bus":4,
+                "name":"ev"
+            }
+        },
+        {
+            "name": "ev1",
+            "type": "EV",
+            "parameters": {
+                "interface_bus":5,
+                "name":"ev1"
+            }
+        },
+        {
+            "name": "tsapp",
+            "type": "TSAPP",
+            "parameters": {"casename":"case118"
+            }
+        },
+        {
+            "name": "recorder_powers_real",
+            "type": "Recorder",
+            "parameters": {
+                "feather_filename": "powers_real.feather",
+                "csv_filename": "powers_real.csv"
+            }
+        }
+    ],
+    "links": [
+        {
+            "source": "ev",
+            "source_port": "powers_real",
+            "target": "recorder_powers_real",
+            "target_port": "subscription"
+        },
+        {
+            "source": "ev",
+            "source_port": "powers_real",
+            "target": "tsapp",
+            "target_port": "powers_real_feedback"
+        }
+    ]
+}

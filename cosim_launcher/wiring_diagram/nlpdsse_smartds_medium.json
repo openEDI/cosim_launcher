@@ -104,12 +104,6 @@
             "target_port": "topology"
         },
         {
-            "source": "sensor_voltage_magnitude",
-            "source_port": "publication",
-            "target": "nlpdsse",
-            "target_port": "voltages_magnitude"
-        },
-        {
             "source": "sensor_power_real",
             "source_port": "publication",
             "target": "nlpdsse",

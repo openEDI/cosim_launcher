@@ -66,6 +66,14 @@
 	df={entry:pd.read_csv(StringIO(results['info'][entry]['info'])) for entry in results['info']}
 ```
 
+# Sigterm
+
+```python
+	res=requests.get(url=url+'/sigterm',params={'uuid':info['uuid']})
+	assert res.status_code==200
+	status=res.json()
+```
+
 # Roadmap
 
 * Migrate to production server

@@ -1,0 +1,14 @@
+{
+    "max_wall_time":60,
+    "name": "test_dp_di_ornl",
+    "components": [
+        {
+            "name": "dp_di_ornl",
+            "type": "DP_DI_ORNL",
+            "parameters": {
+            }
+        }
+    ],
+    "links": [
+    ]
+}

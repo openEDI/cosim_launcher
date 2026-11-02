@@ -1,0 +1,54 @@
+{
+    "max_wall_time":150,
+    "name": "test_ev",
+    "components": [
+        {
+            "name": "ev",
+            "type": "EV",
+            "parameters": {
+                "interface_bus":4,
+                "name":"ev"
+            }
+        },
+        {
+            "name": "ev1",
+            "type": "EV",
+            "parameters": {
+                "interface_bus":6,
+                "name":"ev1"
+            }
+        },
+        {
+            "name": "ev2",
+            "type": "EV",
+            "parameters": {
+                "interface_bus":8,
+                "name":"ev2"
+            }
+        },
+        {
+            "name": "ev3",
+            "type": "EV",
+            "parameters": {
+                "interface_bus":9,
+                "name":"ev3"
+            }
+        },
+        {
+            "name": "recorder_powers_real",
+            "type": "Recorder",
+            "parameters": {
+                "feather_filename": "powers_real.feather",
+                "csv_filename": "powers_real.csv"
+            }
+        }
+    ],
+    "links": [
+        {
+            "source": "ev",
+            "source_port": "powers_real",
+            "target": "recorder_powers_real",
+            "target_port": "subscription"
+        }
+    ]
+}

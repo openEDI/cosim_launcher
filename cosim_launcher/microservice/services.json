@@ -5,5 +5,9 @@
     "LocalFeeder": {"hostname":"localfeeder-service","port":5000},
     "Broker": {"hostname":"broker-service","port":5200},
     "MeasurementComponent": {"hostname":"sensor-service","port":5000},
-    "StateEstimatorComponent": {"hostname":"wls-service","port":5000}
+    "StateEstimatorComponent": {"hostname":"wls-service","port":5000},
+    "TSAPP": {"hostname":"tsapp-service","port":5000},
+    "EV": {"hostname":"ev-service","port":5000},
+    "DP_DI_PNNL": {"hostname":"dp-di-pnnl-service","port":5000},
+    "DP_DI_ORNL": {"hostname":"dp-di-ornl-service","port":5000}
 }

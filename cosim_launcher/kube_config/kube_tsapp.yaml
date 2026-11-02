@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tsapp-deployment
+spec:
+  selector:
+    matchLabels:
+      app: tsapp
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: tsapp
+    spec:
+      containers:
+      - name: tsapp
+        image: tsapp:latest
+        ports:
+        - containerPort: 5000
+        imagePullPolicy: Never # using local images for testing
+        volumeMounts:
+          - name: logs-results-storage
+            mountPath: /persistent_data # generated data+logs to be stored here. Eventually this will be network storage.
+      volumes:
+        - name: logs-results-storage
+          persistentVolumeClaim:
+            claimName: logs-results-pvc
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: tsapp-service
+spec:
+  selector:
+    app: tsapp
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+  type: ClusterIP
